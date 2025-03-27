@@ -5,9 +5,15 @@
     "data": {
       "commands": [
         {
+          "type": "wait",
+          "data": {
+            "waitTime": 3.5
+          }
+        },
+        {
           "type": "path",
           "data": {
-            "pathName": "Left to Coral I (Baby)"
+            "pathName": "Center to Coral H"
           }
         },
         {
@@ -38,44 +44,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Coral I to Left Tree"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Left Tree to Coral L"
-          }
-        },
-        {
-          "type": "sequential",
-          "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "Coral Output"
-                }
-              },
-              {
-                "type": "wait",
-                "data": {
-                  "waitTime": 0.3
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "Hold"
-                }
-              }
-            ]
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Coral L to Station"
+            "pathName": "Coral H Back"
           }
         }
       ]

@@ -36,7 +36,7 @@
         "y": 5.855546357615894
       },
       "prevControl": {
-        "x": 1.943032794716066,
+        "x": 1.9430327947160662,
         "y": 5.855546357615894
       },
       "nextControl": null,
@@ -61,7 +61,7 @@
   "eventMarkers": [
     {
       "name": "Grab le Coral",
-      "waypointRelativePos": 0.23993685872138287,
+      "waypointRelativePos": 0.0077881619937771075,
       "endWaypointRelativePos": null,
       "command": {
         "type": "named",
@@ -83,15 +83,15 @@
     }
   ],
   "globalConstraints": {
-    "maxVelocity": 1.25,
-    "maxAcceleration": 1.25,
+    "maxVelocity": 3.5,
+    "maxAcceleration": 3.0,
     "maxAngularVelocity": 45.0,
     "maxAngularAcceleration": 450.0,
     "nominalVoltage": 12.0,
     "unlimited": false
   },
   "goalEndState": {
-    "velocity": 0.0,
+    "velocity": 1.0,
     "rotation": 180.0
   },
   "reversed": false,

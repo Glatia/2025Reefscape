@@ -1,11 +1,11 @@
 from enum import auto, Enum
 
-import commands2.cmd
 from commands2 import Command, cmd
-from phoenix6.configs import TalonFXConfiguration, MotorOutputConfigs, FeedbackConfigs
-from phoenix6.controls import VelocityDutyCycle, DutyCycleOut
-from phoenix6.hardware import TalonFX
-from phoenix6.signals import NeutralModeValue, ForwardLimitValue
+from phoenix6 import utils
+from phoenix6.configs import CANrangeConfiguration, TalonFXConfiguration, MotorOutputConfigs, FeedbackConfigs, HardwareLimitSwitchConfigs, ProximityParamsConfigs, CurrentLimitsConfigs
+from phoenix6.controls import DutyCycleOut
+from phoenix6.hardware import TalonFX, CANrange
+from phoenix6.signals import NeutralModeValue, ForwardLimitValue, ForwardLimitSourceValue
 
 from constants import Constants
 from subsystems import StateSubsystem
@@ -18,6 +18,7 @@ class IntakeSubsystem(StateSubsystem):
 
     class SubsystemState(Enum):
         HOLD = auto()
+        ALGAE_HOLD = auto()
         CORAL_INTAKE = auto()
         FUNNEL_INTAKE = auto()
         CORAL_OUTPUT = auto()
@@ -25,14 +26,22 @@ class IntakeSubsystem(StateSubsystem):
         ALGAE_OUTPUT = auto()
         L1_OUTPUT = auto()
 
+    _canrange_config = (CANrangeConfiguration().with_proximity_params(ProximityParamsConfigs().with_proximity_threshold(0.1)))
+
     _motor_config = (TalonFXConfiguration()
                      .with_slot0(Constants.IntakeConstants.GAINS)
                      .with_motor_output(MotorOutputConfigs().with_neutral_mode(NeutralModeValue.BRAKE))
                      .with_feedback(FeedbackConfigs().with_sensor_to_mechanism_ratio(Constants.ElevatorConstants.GEAR_RATIO))
+                     .with_current_limits(CurrentLimitsConfigs().with_supply_current_limit_enable(True).with_supply_current_limit(Constants.IntakeConstants.SUPPLY_CURRENT))
                      )
+
+    _limit_switch_config = HardwareLimitSwitchConfigs()
+    _limit_switch_config.forward_limit_remote_sensor_id = Constants.CanIDs.INTAKE_CANRANGE
+    _limit_switch_config.forward_limit_source = ForwardLimitSourceValue.REMOTE_CANRANGE # Top Limit Switch
 
     _state_configs: dict[SubsystemState, tuple[int, bool]] = {
         SubsystemState.HOLD: (0, False),
+        SubsystemState.ALGAE_HOLD: (Constants.IntakeConstants.ALGAE_HOLD, True),
         SubsystemState.CORAL_INTAKE: (Constants.IntakeConstants.CORAL_INTAKE_SPEED, False),
         SubsystemState.FUNNEL_INTAKE: (Constants.IntakeConstants.FUNNEL_INTAKE_SPEED, False),
         SubsystemState.CORAL_OUTPUT: (Constants.IntakeConstants.CORAL_OUTPUT_SPEED, True),
@@ -45,7 +54,13 @@ class IntakeSubsystem(StateSubsystem):
         super().__init__("Intake", self.SubsystemState.HOLD)
 
         self._intake_motor = TalonFX(Constants.CanIDs.INTAKE_TALON)
+        _motor_config = self._motor_config
+        if not utils.is_simulation():
+            _motor_config.hardware_limit_switch = self._limit_switch_config
         self._intake_motor.configurator.apply(self._motor_config)
+
+        self._canrange = CANrange(Constants.CanIDs.INTAKE_CANRANGE)
+        self._canrange.configurator.apply(self._canrange_config)
 
         self._velocity_request = DutyCycleOut(0)
 

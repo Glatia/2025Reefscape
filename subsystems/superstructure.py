@@ -4,8 +4,9 @@ from typing import Optional
 from commands2 import Command, Subsystem, cmd
 from ntcore import NetworkTableInstance
 from phoenix6 import utils
-from wpilib import DriverStation, Mechanism2d, Color8Bit
+from wpilib import DriverStation, Mechanism2d, Color8Bit, SmartDashboard
 
+from constants import Constants
 from subsystems.elevator import ElevatorSubsystem
 from subsystems.funnel import FunnelSubsystem
 from subsystems.pivot import PivotSubsystem
@@ -28,7 +29,7 @@ class Superstructure(Subsystem):
         L3_ALGAE = auto()
         PROCESSOR = auto()
         NET = auto()
-        
+
         FUNNEL = auto()
         FLOOR = auto()
         CLIMBING = auto()
@@ -38,22 +39,23 @@ class Superstructure(Subsystem):
             tuple[
                 Optional[PivotSubsystem.SubsystemState],
                 Optional[ElevatorSubsystem.SubsystemState],
-                Optional[FunnelSubsystem.SubsystemState]
+                Optional[FunnelSubsystem.SubsystemState],
+                Optional[VisionSubsystem.SubsystemState]
             ]] = {
-        Goal.DEFAULT: (PivotSubsystem.SubsystemState.STOW, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L4_CORAL: (PivotSubsystem.SubsystemState.HIGH_SCORING, ElevatorSubsystem.SubsystemState.L4, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L3_CORAL: (PivotSubsystem.SubsystemState.L3_CORAL, ElevatorSubsystem.SubsystemState.L3, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L2_CORAL: (PivotSubsystem.SubsystemState.L2_CORAL, ElevatorSubsystem.SubsystemState.L2, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L1_CORAL: (PivotSubsystem.SubsystemState.LOW_SCORING, ElevatorSubsystem.SubsystemState.L1, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L2_ALGAE: (PivotSubsystem.SubsystemState.ALGAE_INTAKE, ElevatorSubsystem.SubsystemState.L2_ALGAE, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.L3_ALGAE: (PivotSubsystem.SubsystemState.ALGAE_INTAKE, ElevatorSubsystem.SubsystemState.L3_ALGAE, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.PROCESSOR: (PivotSubsystem.SubsystemState.PROCESSOR_SCORING, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.NET: (PivotSubsystem.SubsystemState.NET_SCORING, ElevatorSubsystem.SubsystemState.NET, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.FUNNEL: (PivotSubsystem.SubsystemState.FUNNEL_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.UP),
-        Goal.FLOOR: (PivotSubsystem.SubsystemState.GROUND_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN),
-        Goal.CLIMBING: (PivotSubsystem.SubsystemState.AVOID_CLIMBER, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN)
+        Goal.DEFAULT: (PivotSubsystem.SubsystemState.STOW, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.L4_CORAL: (PivotSubsystem.SubsystemState.HIGH_SCORING, ElevatorSubsystem.SubsystemState.L4, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.L3_CORAL: (PivotSubsystem.SubsystemState.L3_CORAL, ElevatorSubsystem.SubsystemState.L3, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.L2_CORAL: (PivotSubsystem.SubsystemState.L2_CORAL, ElevatorSubsystem.SubsystemState.L2, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.L1_CORAL: (PivotSubsystem.SubsystemState.LOW_SCORING, ElevatorSubsystem.SubsystemState.L1, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.L2_ALGAE: (PivotSubsystem.SubsystemState.ALGAE_INTAKE, ElevatorSubsystem.SubsystemState.L2_ALGAE, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.L3_ALGAE: (PivotSubsystem.SubsystemState.ALGAE_INTAKE, ElevatorSubsystem.SubsystemState.L3_ALGAE, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.REEF_ESTIMATES),
+        Goal.PROCESSOR: (PivotSubsystem.SubsystemState.PROCESSOR_SCORING, ElevatorSubsystem.SubsystemState.PROCESSOR, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.NET: (PivotSubsystem.SubsystemState.NET_SCORING, ElevatorSubsystem.SubsystemState.NET, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.FUNNEL: (PivotSubsystem.SubsystemState.FUNNEL_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.UP, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.FLOOR: (PivotSubsystem.SubsystemState.GROUND_INTAKE, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.ALL_ESTIMATES),
+        Goal.CLIMBING: (PivotSubsystem.SubsystemState.AVOID_CLIMBER, ElevatorSubsystem.SubsystemState.DEFAULT, FunnelSubsystem.SubsystemState.DOWN, VisionSubsystem.SubsystemState.NO_ESTIMATES)
     }
-        
+
     def __init__(self, drivetrain: SwerveSubsystem, pivot: PivotSubsystem, elevator: ElevatorSubsystem, funnel: FunnelSubsystem, vision: VisionSubsystem) -> None:
         """
         Constructs the superstructure using instance of each subsystem.
@@ -79,50 +81,30 @@ class Superstructure(Subsystem):
         self._goal = self.Goal.DEFAULT
         self.set_goal_command(self._goal)
 
-        self._elevator_old_state = self.elevator.get_current_state()
-        self._pivot_old_state = self.pivot.get_current_state()
-        self._pivot_old_setpoint = self.pivot.get_setpoint()
-
-        self._current_goal_pub = NetworkTableInstance.getDefault().getTable("Superstructure").getStringTopic("Current Goal").publish()
+        table = NetworkTableInstance.getDefault().getTable("Superstructure")
+        self._current_goal_pub = table.getStringTopic("Current Goal").publish()
 
         if utils.is_simulation():
             self._superstructure_mechanism = Mechanism2d(1, 5, Color8Bit(0, 0, 105))
             self._superstructure_root = self._superstructure_mechanism.getRoot("Root", 1 / 2, 0.125)
             self._elevator_mech = self._superstructure_root.appendLigament("Elevator", 0.2794, 90, 5, Color8Bit(194, 194, 194))
             self._pivot_mech = self._elevator_mech.appendLigament("Pivot", 0.635, 90, 4, Color8Bit(19, 122, 127))
+            SmartDashboard.putData("Superstructure Mechanism", self._superstructure_mechanism)
 
     def periodic(self):
         if DriverStation.isDisabled():
             return
 
-        pivot_state = self.pivot.get_current_state()
-        elevator_state = self.elevator.get_current_state()
-
-        # If the elevator needs to move, check if the elevator has coral or if the pivot could interfere with the elevator. 
-        if not self.elevator.is_at_setpoint():
-            # Wait for Pivot to leave elevator
-            self.pivot.set_desired_state(PivotSubsystem.SubsystemState.AVOID_ELEVATOR)
-            self.pivot.freeze()
-            if self.pivot.is_in_elevator():
-                self.elevator.set_desired_state(ElevatorSubsystem.SubsystemState.IDLE)
-                self.elevator.freeze()
-
         # Unfreeze subsystems if safe
-        if not self.pivot.is_in_elevator() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR and elevator_state is ElevatorSubsystem.SubsystemState.IDLE:
+        if self.elevator.is_frozen() and not self.pivot.is_in_elevator():
             self.elevator.unfreeze()
-            self.elevator.set_desired_state(self._elevator_old_state)
+            self.elevator.set_desired_state(self._desired_elevator_state)
 
-        if self.elevator.is_at_setpoint() and pivot_state is PivotSubsystem.SubsystemState.AVOID_ELEVATOR:
+        # If the elevator reaches its setpoint or the pivot is outside the elevator and can reach its target safely, unfreeze the pivot
+        if self.pivot.get_current_state() is PivotSubsystem.SubsystemState.AVOID_ELEVATOR and not self.pivot.is_in_elevator() and (
+                self.elevator.is_at_setpoint() or self._desired_pivot_state.value < Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE):
             self.pivot.unfreeze()
-            self.pivot.set_desired_state(self._pivot_old_state)
-
-        # Update old states only when necessary
-        if pivot_state is not PivotSubsystem.SubsystemState.AVOID_ELEVATOR:
-            self._pivot_old_state = pivot_state
-            self._pivot_old_setpoint = self.pivot.get_setpoint()
-
-        if elevator_state is not ElevatorSubsystem.SubsystemState.IDLE:
-            self._elevator_old_state = elevator_state
+            self.pivot.set_desired_state(self._desired_pivot_state)
 
     def simulationPeriodic(self) -> None:
         self._elevator_mech.setLength(self.elevator.get_height())
@@ -131,15 +113,35 @@ class Superstructure(Subsystem):
     def _set_goal(self, goal: Goal) -> None:
         self._goal = goal
 
-        pivot_state, elevator_state, funnel_state = self._goal_to_states.get(goal, (None, None, None))
+        pivot_state, elevator_state, funnel_state, vision_state = self._goal_to_states.get(goal, (None, None, None, None))
+        safety_checks = self._should_enable_safety_checks(pivot_state)
         if pivot_state:
-            self.pivot.set_desired_state(pivot_state)
+            self._desired_pivot_state = pivot_state
+            if safety_checks:
+                self.pivot.set_desired_state(PivotSubsystem.SubsystemState.AVOID_ELEVATOR)
+                self.pivot.freeze()
+            else:
+                self.pivot.set_desired_state(pivot_state)
         if elevator_state:
-            self.elevator.set_desired_state(elevator_state)
+            self._desired_elevator_state = elevator_state
+            if pivot_state and safety_checks:
+                self.elevator.set_desired_state(ElevatorSubsystem.SubsystemState.IDLE)
+                self.elevator.freeze()
+            else:
+                self.elevator.set_desired_state(elevator_state)
         if funnel_state:
             self.funnel.set_desired_state(funnel_state)
+        if vision_state:
+            self.vision.set_desired_state(vision_state)
 
         self._current_goal_pub.set(goal.name)
+
+    def _should_enable_safety_checks(self, pivot_state: PivotSubsystem.SubsystemState) -> bool:
+        """Safety checks are always activated, unless we're already outside the elevator and the new state is also outside the elevator."""
+        return not (
+                self.pivot.get_current_state().value < Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
+                and pivot_state.value < Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
+        )
 
     def set_goal_command(self, goal: Goal) -> Command:
         """

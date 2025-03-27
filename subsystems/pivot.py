@@ -1,4 +1,4 @@
-from enum import auto, Enum
+from enum import Enum
 
 from commands2 import Command
 from commands2.sysid import SysIdRoutine
@@ -6,9 +6,9 @@ from phoenix6 import SignalLogger, utils, BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration, CANcoderConfiguration, MotionMagicConfigs
 from phoenix6.controls import VoltageOut, Follower, MotionMagicVoltage
 from phoenix6.hardware import CANcoder, TalonFX
-from phoenix6.signals import InvertedValue, FeedbackSensorSourceValue, NeutralModeValue, ForwardLimitValue
+from phoenix6.signals import InvertedValue, FeedbackSensorSourceValue, NeutralModeValue
 from phoenix6.sim import ChassisReference
-from wpilib import DriverStation, RobotBase, RobotController
+from wpilib import RobotBase, RobotController
 from wpilib.sysid import SysIdRoutineLog
 from wpimath.filter import Debouncer
 from wpimath.system.plant import DCMotor
@@ -25,35 +25,19 @@ class PivotSubsystem(StateSubsystem):
     """
 
     class SubsystemState(Enum):
-        IDLE = auto()
-        AVOID_ELEVATOR = auto()
-        STOW = auto()
-        GROUND_INTAKE = auto()
-        FUNNEL_INTAKE = auto()
-        ALGAE_INTAKE = auto()
-        HIGH_SCORING = auto()
-        L3_CORAL = auto()
-        L2_CORAL = auto()
-        LOW_SCORING = auto()
-        NET_SCORING = auto()
-        PROCESSOR_SCORING = auto()
-        AVOID_CLIMBER = auto()
-
-    _state_configs: dict[SubsystemState, float | None] = {
-        SubsystemState.IDLE: None,
-        SubsystemState.AVOID_ELEVATOR: Constants.PivotConstants.ELEVATOR_PRIORITY_ANGLE,
-        SubsystemState.STOW: Constants.PivotConstants.STOW_ANGLE,
-        SubsystemState.GROUND_INTAKE: Constants.PivotConstants.GROUND_INTAKE_ANGLE,
-        SubsystemState.FUNNEL_INTAKE: Constants.PivotConstants.FUNNEL_INTAKE_ANGLE,
-        SubsystemState.ALGAE_INTAKE: Constants.PivotConstants.ALGAE_INTAKE_ANGLE,
-        SubsystemState.HIGH_SCORING: Constants.PivotConstants.HIGH_SCORING_ANGLE,
-        SubsystemState.L3_CORAL: Constants.PivotConstants.MID_SCORING_ANGLE,
-        SubsystemState.L2_CORAL: Constants.PivotConstants.MID_SCORING_ANGLE,
-        SubsystemState.LOW_SCORING: Constants.PivotConstants.LOW_SCORING_ANGLE,
-        SubsystemState.NET_SCORING: Constants.PivotConstants.NET_SCORING_ANGLE,
-        SubsystemState.PROCESSOR_SCORING: Constants.PivotConstants.PROCESSOR_SCORING_ANGLE,
-        SubsystemState.AVOID_CLIMBER: Constants.PivotConstants.CLIMBER_PRIORITY_ANGLE
-    }
+        IDLE = None
+        AVOID_ELEVATOR = Constants.PivotConstants.ELEVATOR_PRIORITY_ANGLE
+        STOW = Constants.PivotConstants.STOW_ANGLE
+        GROUND_INTAKE = Constants.PivotConstants.GROUND_INTAKE_ANGLE
+        FUNNEL_INTAKE = Constants.PivotConstants.FUNNEL_INTAKE_ANGLE
+        ALGAE_INTAKE = Constants.PivotConstants.ALGAE_INTAKE_ANGLE
+        HIGH_SCORING = Constants.PivotConstants.HIGH_SCORING_ANGLE
+        L3_CORAL = Constants.PivotConstants.MID_SCORING_ANGLE
+        L2_CORAL = Constants.PivotConstants.MID_SCORING_ANGLE
+        LOW_SCORING = Constants.PivotConstants.LOW_SCORING_ANGLE
+        NET_SCORING = Constants.PivotConstants.NET_SCORING_ANGLE
+        PROCESSOR_SCORING = Constants.PivotConstants.PROCESSOR_SCORING_ANGLE
+        AVOID_CLIMBER = Constants.PivotConstants.CLIMBER_PRIORITY_ANGLE
 
     _encoder_config = CANcoderConfiguration()
     (
@@ -67,12 +51,14 @@ class PivotSubsystem(StateSubsystem):
      .with_rotor_to_sensor_ratio(Constants.PivotConstants.GEAR_RATIO)
      .with_feedback_sensor_source(FeedbackSensorSourceValue.REMOTE_CANCODER)
      .with_feedback_remote_sensor_id(Constants.CanIDs.PIVOT_CANCODER)
-    )
+     )
     _master_config.motor_output.inverted = InvertedValue.CLOCKWISE_POSITIVE
     _master_config.motor_output.neutral_mode = NeutralModeValue.BRAKE
 
     _master_config.with_slot0(Constants.PivotConstants.GAINS)
-    _master_config.with_motion_magic(MotionMagicConfigs().with_motion_magic_cruise_velocity(Constants.PivotConstants.CRUISE_VELOCITY).with_motion_magic_acceleration(Constants.PivotConstants.MM_ACCELERATION))
+    _master_config.with_motion_magic(
+        MotionMagicConfigs().with_motion_magic_cruise_velocity(Constants.PivotConstants.CRUISE_VELOCITY).with_motion_magic_acceleration(Constants.PivotConstants.MM_ACCELERATION)
+    )
 
     _follower_config = TalonFXConfiguration()
     _follower_config.feedback.with_rotor_to_sensor_ratio(Constants.PivotConstants.GEAR_RATIO)
@@ -138,12 +124,12 @@ class PivotSubsystem(StateSubsystem):
             cancoder_sim.set_supply_voltage(RobotController.getBatteryVoltage())
             cancoder_sim.set_raw_position(talon_sim.getAngularPosition() / Constants.PivotConstants.GEAR_RATIO)
             cancoder_sim.set_velocity(talon_sim.getAngularVelocity() / Constants.PivotConstants.GEAR_RATIO)
-            
+
     def set_desired_state(self, desired_state: SubsystemState) -> None:
         if not super().set_desired_state(desired_state):
             return
 
-        position = self._state_configs.get(desired_state, None)
+        position = desired_state.value
         if position is None:
             self._master_motor.set_control(self._brake_request)
             return
@@ -158,7 +144,7 @@ class PivotSubsystem(StateSubsystem):
         if not position:
             position = self._master_motor.get_position(True).value
         return position >= Constants.PivotConstants.INSIDE_ELEVATOR_ANGLE
-    
+
     def get_setpoint(self) -> float:
         return self._position_request.position
 
